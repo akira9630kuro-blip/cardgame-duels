@@ -708,19 +708,20 @@ const CIVS = {
   multi:  { name: '多色', enName: 'MULTI',  color: '#4faf9e', colorDark: '#1f4f4a' },
 };
 
+// note:true の能力はカードのテキスト欄に「能力名:説明」を自動掲載する(cards.js)。
+// 新しい能力を追加するときは原則 note:true を付ける(基本能力のみ省略)。
 const ABILITY_INFO = {
   speed:      { label: '速攻', kanji: '速', desc: 'このクリーチャーは出た瞬間でも攻撃できる。' },
   guard:      { label: 'ガード', kanji: '守', desc: '相手の攻撃をブロックできる。' },
   multiBreak: { label: '連撃', kanji: '連', desc: 'プレイヤーを攻撃する時、シールドを2枚ブレイクする。' },
-  ambush:     { label: '奇襲', kanji: '奇', desc: 'シールドとしてブレイクされた時、コストを支払わずにプレイしてよい。' },
   deathtouch:    { label: '毒針',        kanji: '毒',  desc: 'バトル時、相手クリーチャーを必ず破壊する。' },
   shieldTrigger: { label: 'S・トリガー', kanji: 'ST',  desc: 'シールドから手札に加わったとき、コストを支払わずに使用できる。' },
   powerBreak:    { label: '剛撃',        kanji: '剛',  desc: 'パワー6000ごとに、ブレイクできるシールドが1枚増える(〜5999:1枚、6000〜:2枚、12000〜:3枚)。' },
-  spellBoost:    { label: '詠唱',        kanji: '詠',  desc: '自分が使う呪文のコストを1少なくする(重複する、最低1)。' },
-  freezeCast:    { label: '凍結',        kanji: '凍',  desc: '自分が呪文を使った時、相手のクリーチャー1体を選んでもよい。それは次の自分のターンの始めまで攻撃もブロックもできない。' },
-  tideBreak:     { label: '潮撃',        kanji: '潮',  desc: `デッキに水文明のカードが${RULES.TIDE_WATER_REQ}枚以上入っているなら、シールドを${RULES.TIDE_BREAK_COUNT}枚ブレイクする。` },
-  graveSummon:   { label: '墓地召喚',    kanji: '墓',  desc: '墓地からもコストを1下げて召喚できる。' },
-  slowField:     { label: '時滞',        kanji: '滞',  desc: 'このクリーチャーがバトルゾーンにある間、相手のクリーチャーは出たターンに攻撃できない。' },
+  spellBoost:    { label: '詠唱',        kanji: '詠',  desc: '自分が使う呪文のコストを1少なくする(重複する、最低1)。', note: true },
+  freezeCast:    { label: '凍結',        kanji: '凍',  desc: '自分が呪文を使った時、相手のクリーチャー1体を選んでもよい。それは次の自分のターンの始めまで攻撃もブロックもできない。', note: true },
+  tideBreak:     { label: '潮撃',        kanji: '潮',  desc: `デッキに水文明のカードが${RULES.TIDE_WATER_REQ}枚以上入っているなら、シールドを${RULES.TIDE_BREAK_COUNT}枚ブレイクする。`, note: true },
+  graveSummon:   { label: '墓地召喚',    kanji: '墓',  desc: '墓地からもコストを1下げて召喚できる。', note: true },
+  slowField:     { label: '時滞',        kanji: '滞',  desc: 'このクリーチャーがバトルゾーンにある間、相手のクリーチャーは出たターンに攻撃できない。', note: true },
 };
 
 function effectText(effect, isEtb) {
@@ -751,6 +752,8 @@ function effectText(effect, isEtb) {
     case 'selfDiscard':   return `その後、自分の手札を1枚選んで捨てる。`;
     case 'placeLimit':    return `${p}次の相手のターンの終わりまで、相手はクリーチャーを1体しか出せない。`;
     case 'graveShuffle': return `${p}自分の墓地のカードをすべて山札に加えてシャッフルし、その後1枚引く。`;
+    case 'peekAllocate': return `${p}自分の山札の上から3枚を見て、1枚をマナゾーンに、1枚を手札に、残りを墓地に置く。`;
+    case 'manaToHand':   return `${p}自分のマナゾーンからカードを1枚選び、手札に戻す。`;
     case 'sequence':      return `${p}` + effect.steps.map(s => effectText(s, false)).join('');
     default: return '';
   }
@@ -846,6 +849,8 @@ const RAW_CARDS = [
   {id:'d18', civ:'dark', type:'spell', name:'闇との取引', cost:1, abilities:[], effect:{"type":"sequence","steps":[{"type":"draw","value":2},{"type":"selfDiscard"}]}},
   {id:'m3', civ:'multi', civs:['dark','nature'], type:'creature', name:'腐土の巨人ヨルムン', cost:5, power:8000, abilities:["guard","graveSummon","slowField"], etb:{"type":"sequence","steps":[{"type":"destroyPowerLE","value":2000},{"type":"destroyPowerLE","value":2000}]}},
   {id:'m4', civ:'multi', civs:['fire','light'], type:'creature', name:'閃光の騎士団長レイ', cost:5, power:4000, abilities:["speed"], etb:{"type":"placeLimit"}},
+  {id:'n16', civ:'nature', type:'creature', name:'豊穣の神恩ワルツ', cost:3, power:2000, abilities:[], etb:{"type":"peekAllocate"}},
+  {id:'n17', civ:'nature', type:'creature', name:'収穫の樹人ポモナ', cost:4, power:4000, abilities:["guard"], etb:{"type":"sequence","steps":[{"type":"multiRamp","count":2},{"type":"manaToHand"}]}},
 ];
 /* ═══════════════════════════════════════════════════════════════
    カードまわりのロジック(カードのデータ本体は cards-data.js)
@@ -854,6 +859,12 @@ const RAW_CARDS = [
 RAW_CARDS.forEach(c => {
   if (!c.text) c.text = c.type === 'creature' ? (c.etb ? effectText(c.etb, true) : '') : (c.effect ? effectText(c.effect, false) : '');
   if (!c.abilities) c.abilities = [];
+  // note付き能力(詠唱・凍結・潮撃・墓地召喚・時滞など)は説明をテキスト欄に自動掲載。
+  // テキストに能力名が既に書かれている場合は二重掲載しない。
+  c.abilities.forEach(a => {
+    const info = ABILITY_INFO[a];
+    if (info && info.note && !c.text.includes(info.label)) c.text += `${info.label}:${info.desc}`;
+  });
 });
 
 function getCardDef(id) { return RAW_CARDS.find(c => c.id === id); }
@@ -1082,6 +1093,19 @@ class AiPlayer {
           chosen = pickStrongest(pend.options, state.players[ctrl].graveyard);
         } else if (kind === 'freeSpell' || kind === 'stadiumCast'){
           chosen = pend.options[0];
+        } else if (kind === 'peekMana' || kind === 'peekHand'){
+          // マナには一番コストの低いカード、手札には一番コストの高いカードを回す
+          const cs = pend.cards || [];
+          let pick=null, best=(kind==='peekMana')?1e9:-1;
+          for(const u of pend.options){
+            const c = cs.find(x=>x.uid===u); if(!c) continue;
+            const cost = getCardDef(c.defId).cost;
+            if (kind==='peekMana' ? cost<best : cost>best){ best=cost; pick=u; }
+          }
+          chosen = pick || pend.options[0];
+        } else if (kind === 'manaToHand'){
+          // マナから一番コストの高いカードを手札に回収する
+          let best=null,bc=-1; for(const u of pend.options){const c=state.players[ctrl].mana.find(x=>x.uid===u);if(!c)continue;const cc=getCardDef(c.defId).cost;if(cc>bc){bc=cc;best=u;}} chosen=best||pend.options[0];
         } else if (kind === 'selfDiscard'){
           let worst=null,wc=99; for(const u of pend.options){const c=state.players[ctrl].hand.find(x=>x.uid===u);if(!c)continue;const cc=getCardDef(c.defId).cost;if(cc<wc){wc=cc;worst=u;}} chosen=worst||pend.options[0];
         } else if (kind === 'stadiumPlace'){
@@ -1676,6 +1700,13 @@ class GameEngine {
       return;
     }
 
+    case 'peekAllocate': {
+      if (controller.deck.length === 0) { this.log(state, `(山札がなく何も起きなかった)`); return; }
+      const revealed = controller.deck.splice(0, 3);
+      this.log(state, `${controller.name} が山札の上から${revealed.length}枚を見た。`);
+      this.peekAllocateStep(state, controllerIdx, revealed, 'mana');
+      return;
+    }
     case 'sequence': {
       const steps = effect.steps.slice();
       while (steps.length) {
@@ -1711,6 +1742,13 @@ class GameEngine {
     case 'selfDiscard': {
       if (controller.hand.length === 0) { this.log(state, `(手札がなかった)`); return; }
       state.pending = { type: 'chooseTarget', kind: 'selfDiscard', controllerIdx, options: controller.hand.map(c => c.uid) };
+      return;
+    }
+    case 'manaToHand': {
+      const options = controller.mana.slice();
+      if (options.length === 0) { this.log(state, `(マナゾーンにカードがなく何も起きなかった)`); return; }
+      if (options.length === 1) this.resolveManaToHand(state, controllerIdx, options[0].uid);
+      else state.pending = { type: 'chooseTarget', kind: 'manaToHand', controllerIdx, options: options.map(c => c.uid) };
       return;
     }
     case 'reviveSummon': {
@@ -1771,6 +1809,13 @@ class GameEngine {
   controller.hand.push(card);
   this.log(state, `${controller.name} が墓地から「${getCardDef(card.defId).name}」を手札に戻した。`);
 }
+  resolveManaToHand(state, controllerIdx, uid) {
+  const controller = state.players[controllerIdx];
+  const card = this.removeFromZone(controller.mana, uid);
+  card.tapped = false;
+  controller.hand.push(card);
+  this.log(state, `${controller.name} がマナゾーンから「${getCardDef(card.defId).name}」を手札に戻した。`);
+}
   resolveBounce(state, controllerIdx, uid) {
   const opp = state.players[other(controllerIdx)];
   const card = this.removeFromZone(opp.battle, uid);
@@ -1793,6 +1838,31 @@ class GameEngine {
   const c = this.findInZone(controller.battle, uid);
   if (c) { c.buff = (c.buff || 0) + value; this.log(state, `「${getCardDef(c.defId).name}」のパワーが+${value}された。`); }
 }
+  // peekAllocate: 見ている残りカード(cards)を次の置き先の選択へ回す。1枚なら自動で置く
+  peekAllocateStep(state, controllerIdx, cards, stage) {
+  if (cards.length === 0) return;
+  const kind = stage === 'mana' ? 'peekMana' : 'peekHand';
+  if (cards.length === 1) {
+    this.peekAllocatePlace(state, controllerIdx, cards[0], stage);
+    return;
+  }
+  state.pending = { type: 'chooseTarget', kind, controllerIdx, cards, options: cards.map(c => c.uid) };
+}
+  peekAllocatePlace(state, controllerIdx, card, dest) {
+  const controller = state.players[controllerIdx];
+  const cd = getCardDef(card.defId);
+  if (dest === 'mana') {
+    card.tapped = !!(cd.civs && cd.civs.length > 1); // 多色カードはタップ状態
+    controller.mana.push(card);
+    this.log(state, `${controller.name} が「${cd.name}」をマナゾーンに置いた${card.tapped ? '(多色のためタップ状態)' : ''}。`);
+  } else if (dest === 'hand') {
+    controller.hand.push({ uid: card.uid, defId: card.defId });
+    this.log(state, `${controller.name} が「${cd.name}」を手札に加えた。`);
+  } else {
+    controller.graveyard.push({ uid: card.uid, defId: card.defId });
+    this.log(state, `${controller.name} が「${cd.name}」を墓地に置いた。`);
+  }
+}
   drainEffectQueue(state) {
   while (state.effectQueue && state.effectQueue.length && !state.pending && state.winner === null) {
     const item = state.effectQueue.shift();
@@ -1801,7 +1871,7 @@ class GameEngine {
 }
   resolvePendingTarget(state, chosenUid) {
   if (state.winner !== null || !state.pending || state.pending.type !== 'chooseTarget') return { ok: false };
-  const { kind, controllerIdx, value, multi, skippable, budget, card: pendCard } = state.pending;
+  const { kind, controllerIdx, value, multi, skippable, budget, card: pendCard, cards: pendCards } = state.pending;
   if (chosenUid === null) {
     if (!skippable) return { ok: false };
     state.pending = null;
@@ -1859,6 +1929,7 @@ class GameEngine {
       this.log(state, `「${getCardDef(c.defId).name}」は凍結された! (次の${state.players[controllerIdx].name}のターンまで攻撃・ブロック不可)`);
     }
   }
+  else if (kind === 'manaToHand') this.resolveManaToHand(state, controllerIdx, chosenUid);
   else if (kind === 'selfDiscard') {
     const p = state.players[controllerIdx];
     const i = p.hand.findIndex(x => x.uid === chosenUid);
@@ -1915,6 +1986,14 @@ class GameEngine {
         }
       }
     }
+  }
+  else if (kind === 'peekMana' || kind === 'peekHand') {
+    const cs = pendCards || [];
+    const pick = cs.find(c => c.uid === chosenUid) || cs[0];
+    const rest = cs.filter(c => c !== pick);
+    if (pick) this.peekAllocatePlace(state, controllerIdx, pick, kind === 'peekMana' ? 'mana' : 'hand');
+    if (kind === 'peekMana') this.peekAllocateStep(state, controllerIdx, rest, 'hand');
+    else rest.forEach(c => this.peekAllocatePlace(state, controllerIdx, c, 'grave'));
   }
   /* Multi-target effects: re-open selection for remaining picks */
   if (multi && multi > 1 && !state.pending && state.winner === null && kind !== 'reviveSummon' && kind !== 'freeSummon') {
@@ -2971,7 +3050,7 @@ const ICON_GY  ='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 /* =====================================================================
    CARD RENDERING — identical to v3
    ===================================================================== */
-function abilityBadges(ab){ if(!ab||!ab.length)return ''; return `<div class="card-abilities">${ab.map(a=>{const bc=a==='shieldTrigger'?'ability-badge st-badge':'ability-badge';return `<span class="${bc}" title="${esc(ABILITY_INFO[a]?.label||a)}">${ABILITY_INFO[a]?.kanji||a[0]}</span>`;}).join('')}</div>`; }
+function abilityBadges(ab){ if(!ab||!ab.length)return ''; return `<div class="card-abilities">${ab.map(a=>{const bc=a==='shieldTrigger'?'ability-badge st-badge':'ability-badge';return `<span class="${bc}" title="${esc(ABILITY_INFO[a]?(ABILITY_INFO[a].label+':'+ABILITY_INFO[a].desc):a)}">${ABILITY_INFO[a]?.kanji||a[0]}</span>`;}).join('')}</div>`; }
 function cardFootHTML(def,opts){
   if(def.type==='creature'){const tot=def.power+(opts.buff||0);const pd=opts.buff?`${tot}<span style="font-size:.62em;opacity:.85;"> (+${opts.buff})</span>`:`${tot}`;return `<div class="card-foot" style="justify-content:space-between;">${abilityBadges(def.abilities)}<span class="card-power">${pd}</span></div>`;}
   const spAb=(def.abilities&&def.abilities.length)?abilityBadges(def.abilities):'';
@@ -3223,12 +3302,14 @@ function pendingModalHTML(){
   if(pend.type==='block'){const def=getPlayer(pend.defenderIdx),atk=getPlayer(pend.attackerIdx).battle.find(c=>c.uid===pend.attackerUid),aDef=atk?getCardDef(atk.defId):null;const opts=pend.options.map(uid=>{const c=def.battle.find(x=>x.uid===uid);return cardHTML(c.defId,{action:'block-choose',uid,selectable:true});}).join('');return `<div class="modal-overlay"><div class="modal-box"><div class="modal-title">${esc(def.name)}: ブロックしますか?</div><div style="text-align:center;font-size:12.5px;color:var(--text-muted);">「${esc(aDef?aDef.name:'')}」の攻撃</div><div class="target-grid">${opts}</div><div class="modal-actions"><button class="btn btn-ghost btn-block" data-action="block-decline">ブロックしない</button></div></div></div>`;}
   if(pend.type==='ambush'){const p=getPlayer(pend.controllerIdx),hc=p.hand.find(c=>c.uid===pend.cardUid);if(!hc)return '';const card=getCardDef(hc.defId);const stLabel=pend.isST?'S・トリガー発動!':'奇襲発動!';return `<div class="modal-overlay"><div class="modal-box"><div class="modal-title">${stLabel}</div><div class="modal-card-preview">${cardHTML(card.id,{large:true})}</div><div style="text-align:center;font-size:12.5px;color:var(--text-muted);">無料でプレイしますか?</div><div class="modal-actions row"><button class="btn btn-ghost" data-action="ambush-keep">手札に加える</button><button class="btn btn-primary" data-action="ambush-play">無料でプレイ</button></div></div></div>`;}
   if(pend.type==='chooseTarget'){
-    const labels={regrow:'墓地から戻すクリーチャーを選択',bounce:'手札に戻すクリーチャーを選択',destroy:'破壊するクリーチャーを選択',destroyAny:'破壊するクリーチャーを選択',tap:'タップするクリーチャーを選択',buff:'パワーを上げるクリーチャーを選択',freeSpell:'無料で使用する光の呪文を選択',freeSummon:'無料で召喚するクリーチャーを選択',freeze:'凍結するクリーチャーを選択',selfDiscard:'捨てるカードを選択',stadiumPlace:'呪文をどのスタジアムの下に置く?(+1ドロー)',stadiumCast:'コストを支払わずに唱える呪文を選択',reviveSummon:'場に出すクリーチャーを選択(手札/墓地)'};
+    const labels={regrow:'墓地から戻すクリーチャーを選択',bounce:'手札に戻すクリーチャーを選択',destroy:'破壊するクリーチャーを選択',destroyAny:'破壊するクリーチャーを選択',tap:'タップするクリーチャーを選択',buff:'パワーを上げるクリーチャーを選択',freeSpell:'無料で使用する光の呪文を選択',freeSummon:'無料で召喚するクリーチャーを選択',freeze:'凍結するクリーチャーを選択',selfDiscard:'捨てるカードを選択',stadiumPlace:'呪文をどのスタジアムの下に置く?(+1ドロー)',stadiumCast:'コストを支払わずに唱える呪文を選択',reviveSummon:'場に出すクリーチャーを選択(手札/墓地)',peekMana:'マナゾーンに置くカードを選択(残りは手札→墓地へ)',peekHand:'手札に加えるカードを選択(残りは墓地へ)',manaToHand:'手札に戻すカードを選択(マナゾーン)'};
     let zone;
     if(pend.kind==='regrow')zone=getPlayer(pend.controllerIdx).graveyard;
     else if(pend.kind==='buff')zone=getPlayer(pend.controllerIdx).battle;
     else if(pend.kind==='freeSpell'||pend.kind==='freeSummon'||pend.kind==='selfDiscard'||pend.kind==='stadiumCast')zone=getPlayer(pend.controllerIdx).hand;
     else if(pend.kind==='reviveSummon')zone=[...getPlayer(pend.controllerIdx).hand,...getPlayer(pend.controllerIdx).graveyard];
+    else if(pend.kind==='peekMana'||pend.kind==='peekHand')zone=pend.cards||[];
+    else if(pend.kind==='manaToHand')zone=getPlayer(pend.controllerIdx).mana;
     else zone=getPlayer(other(pend.controllerIdx)).battle;
     let opts;
     if(pend.kind==='stadiumPlace'){
