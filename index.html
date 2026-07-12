@@ -245,7 +245,7 @@ img, svg { display:block; }
 .attack-banner.resolving .ab-sub { color:var(--civ-light); }
 @keyframes atkPulse { 0%{transform:translateY(0);} 40%{transform:translateY(-8px) scale(1.06);} 100%{transform:translateY(0);} }
 @keyframes hitShake { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-5px);} 40%{transform:translateX(5px);} 60%{transform:translateX(-3px);} 80%{transform:translateX(3px);} }
-.attack-banner { position:fixed; top:25%; left:50%; transform:translate(-50%,-50%); z-index:200; pointer-events:none;
+.attack-banner { position:fixed; top:20%; left:50%; transform:translate(-50%,-50%); z-index:200; pointer-events:none;
   background:linear-gradient(120deg, rgba(20,10,10,.94), rgba(40,15,15,.94)); border:1.5px solid var(--civ-fire);
   border-radius:var(--r-md); padding:14px 26px; box-shadow:0 8px 40px rgba(0,0,0,.6), 0 0 24px rgba(214,90,60,.4);
   font-family:var(--font-display); text-align:center; animation:atkBannerIn .35s ease-out, atkBannerOut .35s ease-in 1.15s forwards; }
@@ -772,6 +772,7 @@ function effectText(effect, isEtb) {
     case 'graveShuffle': return `${p}自分の墓地のカードをすべて山札に加えてシャッフルし、その後1枚引く。`;
     case 'peekAllocate': return `${p}自分の山札の上から3枚を見て、1枚をマナゾーンに、1枚を手札に、残りを墓地に置く。`;
     case 'manaToHand':   return `${p}自分のマナゾーンからカードを1枚選び、手札に戻す。`;
+    case 'reduceShieldsTo': return `${p}相手のシールドが残り${effect.value}枚になるように墓地に置く。`;
     case 'sequence':      return `${p}` + effect.steps.map(s => effectText(s, false)).join('');
     default: return '';
   }
@@ -817,7 +818,7 @@ const RAW_CARDS = [
   {id:'n1', civ:'nature', type:'creature', name:'双葉のチョコロ', cost:1, power:1000, abilities:["shieldTrigger"]},
   {id:'n2', civ:'nature', type:'creature', name:'つる脚のラプトル', cost:2, power:3000, abilities:["guard"]},
   {id:'n3', civ:'nature', type:'creature', name:'芽吹きの精霊リーフィ', cost:3, power:1000, abilities:["speed"], etb:{"type":"ramp"}},
-  {id:'n4', civ:'nature', type:'creature', name:'巨木の番人タロス', cost:4, power:4000, abilities:["guard"]},
+  {id:'n4', civ:'nature', type:'creature', name:'巨木の番人タロス', cost:4, power:4000, abilities:["guard"], etb:{"type":"draw","value":2}},
   {id:'n5', civ:'nature', type:'creature', name:'大角獣バイソンガ', cost:5, power:6000, abilities:["guard"]},
   {id:'n6', civ:'nature', type:'creature', name:'古代樹の巨神イグドラム', cost:6, power:9000, abilities:["guard"]},
   {id:'n7', civ:'nature', type:'spell', name:'マナの導き', cost:2, abilities:["shieldTrigger"], effect:{"type":"ramp"}},
@@ -869,6 +870,7 @@ const RAW_CARDS = [
   {id:'m4', civ:'multi', civs:['fire','light'], type:'creature', name:'閃光の騎士団長レイ', cost:5, power:4000, abilities:["speed"], etb:{"type":"placeLimit"}},
   {id:'n16', civ:'nature', type:'creature', name:'豊穣の神恩ワルツ', cost:3, power:2000, abilities:[], etb:{"type":"peekAllocate"}},
   {id:'n17', civ:'nature', type:'creature', name:'収穫の樹人ポモナ', cost:4, power:4000, abilities:["guard"], etb:{"type":"sequence","steps":[{"type":"multiRamp","count":2},{"type":"manaToHand"}]}},
+  {id:'d16', civ:'dark', type:'creature', name:'盾喰らいの大悪魔グラトニス', cost:7, power:9000, abilities:["speed","powerBreak"], etb:{"type":"reduceShieldsTo","value":3}},
 ];
 /* ═══════════════════════════════════════════════════════════════
    カードまわりのロジック(カードのデータ本体は cards-data.js)
@@ -1775,6 +1777,18 @@ class GameEngine {
       const opts = [...controller.hand.filter(ok), ...controller.graveyard.filter(ok)].map(c => c.uid);
       if (opts.length === 0) { if (!effect.silent) this.log(state, `(出せるクリーチャーがなかった)`); return; }
       state.pending = { type: 'chooseTarget', kind: 'reviveSummon', controllerIdx, skippable: true, multi: cnt, options: opts };
+      return;
+    }
+    case 'reduceShieldsTo': {
+      const keep = effect.value === undefined ? 3 : effect.value;
+      let removed = 0;
+      while (opp.shields.length > keep) {
+        const s = opp.shields.pop();
+        opp.graveyard.push({ uid: s.uid, defId: s.defId });
+        removed++;
+      }
+      if (removed === 0) { this.log(state, `(相手のシールドは${keep}枚以下で何も起きなかった)`); return; }
+      this.log(state, `${opp.name} のシールド${removed}枚が墓地に置かれた! (残り${keep}枚)`);
       return;
     }
     case 'placeLimit': {
